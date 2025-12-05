@@ -1,0 +1,16 @@
+{
+    "local": {
+        "postgres": {
+            "host": "localhost",
+            "port": 5432,
+            "user": "postgres",
+            "password": "tiger",
+            "dbname": "learn_go"
+        },
+        "redis": {
+            "address": "localhost:6379",
+            "password": "",
+            "db": 0
+        }
+    }
+}
