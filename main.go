@@ -1,31 +1,39 @@
 package main
 
 import (
-	"auth-service/dbops"
-	"auth-service/loggerconfig"
-	"auth-service/router"
+	"context"
+	"fmt"
+	"notifier-service/config"
+	"notifier-service/kafka"
+	"notifier-service/notifier"
+	"os"
 
 	"github.com/joho/godotenv"
 )
 
 func main() {
-	e := godotenv.Load()
-	if e != nil {
-		// fmt.Print(e)
-	}
-	loggerconfig.InitLogrus()
-	loggerconfig.Info("GIN auth-service started!")
+	godotenv.Load()
 
-	cfg, err := dbops.LoadConfig()
-	if err != nil {
-		loggerconfig.Panic("unable to load config")
+	env := os.Getenv("env")
+	if env == "" {
+		env = "local"
 	}
-	err = dbops.InitPostgres(cfg)
-	if err != nil {
-		loggerconfig.Panic("Unable to connect db")
+	senderMail := os.Getenv("mail")
+
+	config := config.Start(env)
+
+	consumer := kafka.NewConsumer(config)
+
+	handler := func(key, value []byte) error {
+		switch string(key) {
+		case "sms":
+			return notifier.SendSMS(value)
+		case "email":
+			return notifier.SendEmail(value, config, senderMail)
+		default:
+			return fmt.Errorf("unknown key: %s", key)
+		}
 	}
-	dbops.MigrateTables()
-	r := router.InitRouters()
-	port := "8080"
-	r.Run(":" + port)
+
+	consumer.Start(context.Background(), handler)
 }
